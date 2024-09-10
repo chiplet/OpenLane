@@ -31,7 +31,7 @@ endif
 # Allow using GUIs
 UNAME_S = $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
-DOCKER_OPTIONS += -e DISPLAY=$(DISPLAY) -v /tmp/.X11-unix:/tmp/.X11-unix -v $(HOME)/.Xauthority:/.Xauthority --network host --security-opt seccomp=unconfined
+DOCKER_OPTIONS += -e DISPLAY=$(DISPLAY) -v /tmp/.X11-unix:/tmp/.X11-unix --network host --security-opt seccomp=unconfined
   ifneq ("$(wildcard $(HOME)/.openroad)","")
     DOCKER_OPTIONS += -v $(HOME)/.openroad:/.openroad
   endif
@@ -58,7 +58,7 @@ OPEN_PDKS_COMMIT ?= $(shell $(PYTHON_BIN) ./dependencies/tool.py open_pdks -f co
 
 export PDK_ROOT ?= $(HOME)/.volare
 export PDK_ROOT := $(shell $(PYTHON_BIN) -c "import os; print(os.path.realpath('$(PDK_ROOT)'), end='')")
-PDK_OPTS = -v $(PDK_ROOT):$(PDK_ROOT) -e PDK_ROOT=$(PDK_ROOT)
+PDK_OPTS = -v $(PDK_ROOT):$(PDK_ROOT):z -e PDK_ROOT=$(PDK_ROOT)
 
 export PDK ?= sky130A
 
@@ -88,17 +88,17 @@ endif
 _FAKE_VARIABLE_TO_FORCE_MKDIR := $(shell mkdir -p ./empty)
 
 ENV_MOUNT = \
-	-v $(OPENLANE_DIR):/openlane\
-	-v $(PWD)/empty:/openlane/install
+	-v $(OPENLANE_DIR):/openlane:z\
+	-v $(PWD)/empty:/openlane/install:z
 
 ifeq ($(MAKECMDGOALS), m)
 ENV_MOUNT = \
-	-v $(OPENLANE_DIR):$(OPENLANE_DIR)\
-	-v $(PWD)/empty:$(OPENLANE_DIR)/install\
+	-v $(OPENLANE_DIR):$(OPENLANE_DIR):z\
+	-v $(PWD)/empty:$(OPENLANE_DIR)/install:z\
 	-w $(OPENLANE_DIR)
 endif
 
-ENV_START := docker run --rm\
+ENV_START := podman run --rm\
 	-v $(HOME):$(HOME)\
 	$(ENV_MOUNT)\
 	$(PDK_OPTS)\
@@ -114,15 +114,15 @@ all: get-openlane pdk
 
 .PHONY: openlane
 openlane:
-	@$(MAKE) -C docker openlane
-	docker tag efabless/openlane:current-$(DOCKER_ARCH) $(OPENLANE_IMAGE_NAME)-$(DOCKER_ARCH)
+	@$(MAKE) -C podman openlane
+	podman tag efabless/openlane:current-$(DOCKER_ARCH) $(OPENLANE_IMAGE_NAME)-$(DOCKER_ARCH)
 
 .PHONY: openlane-and-push-tools
 openlane-and-push-tools: venv/created
-	@PYTHON_BIN=$(PWD)/venv/bin/$(PYTHON_BIN) BUILD_IF_CANT_PULL=1 BUILD_IF_CANT_PULL_THEN_PUSH=1 $(MAKE) -C docker openlane
+	@PYTHON_BIN=$(PWD)/venv/bin/$(PYTHON_BIN) BUILD_IF_CANT_PULL=1 BUILD_IF_CANT_PULL_THEN_PUSH=1 $(MAKE) -C podman openlane
 
 pull-openlane:
-	@docker pull "$(OPENLANE_IMAGE_NAME)"
+	@podman pull "$(OPENLANE_IMAGE_NAME)"
 
 get-openlane:
 	@$(MAKE) pull-openlane || $(MAKE) openlane

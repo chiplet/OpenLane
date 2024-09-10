@@ -55,7 +55,7 @@ class ContainerInfo(StringRepresentable):
             info = ""
             try:
                 info = subprocess.check_output(
-                    ["docker", "info", "--format", "{{json .}}"]
+                    ["podman", "info", "--format", "{{json .}}"]
                 ).decode("utf8")
             except Exception:
                 return None
